@@ -8,3 +8,11 @@ it('should increment counter', () => {
   })
   expect(result.current.count).toBe(1)
 })
+
+it('should decrement counter', () => {
+  const { result } = renderHook(() => useCounter())
+  act(() => {
+    result.current.decrement()
+  })
+  expect(result.current.count).toBe(-1)
+})
