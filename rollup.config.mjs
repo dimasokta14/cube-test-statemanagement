@@ -5,84 +5,89 @@ import external from 'rollup-plugin-peer-deps-external';
 import resolve from "@rollup/plugin-node-resolve";
 import replace from '@rollup/plugin-replace';
 import commonjs from "@rollup/plugin-commonjs";
-import typescript from "@rollup/plugin-typescript";
+import typescript from 'rollup-plugin-typescript2';
 import dts from "rollup-plugin-dts";
-import terser from '@rollup/plugin-terser'
+import terser from '@rollup/plugin-terser';
+import peerDepsExternal from "rollup-plugin-peer-deps-external";
+import generatePackageJson from 'rollup-plugin-generate-package-json';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const packageJson = require('./package.json');
 
 
-const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json'];
-const CODES = [
-  'THIS_IS_UNDEFINED',
-  'MISSING_GLOBAL_NAME',
-  'CIRCULAR_DEPENDENCY',
+const plugins = [
+  peerDepsExternal(),
+  resolve(),
+  // replace({
+  //   __IS_DEV__: process.env.NODE_ENV === "development",
+  // }),
+  commonjs(),
+  typescript({
+    tsconfig: "./tsconfig.json",
+    useTsconfigDeclarationDir: true,
+  }),
+  terser(),
 ];
 
-const getChunks = URI =>
-  readdirSync(path.resolve(URI))
-    .filter(x => x.includes('.ts'))
-    .reduce((a, c) => ({ ...a, [c.replace('.ts', '')]: `src/${c}` }), {});
+const subfolderPlugins = (folderName) => [
+  ...plugins,
+  generatePackageJson({
+    baseContents: {
+      name: `${packageJson.name}/${folderName}`,
+      private: true,
+      main: '../cjs/index.js',
+      module: './index.js',
+      types: './index.d.ts',
+    },
+  }),
+];
 
-const discardWarning = warning => {
-  if (CODES.includes(warning.code)) {
-    return;
-  }
+export const getFolders = (entry) => {
+  const dirs = readdirSync(entry)
+  const dirsWithoutIndex = dirs.filter(name => name !== 'index.ts').filter(name => name !== 'utils')
+  return dirsWithoutIndex
+}
 
-  console.error(warning);
-};
-
-const commonPlugins = () => [
-  external({
-        includeDependencies: true,
-      }),
-      babel({
-        babelrc: false,
-        presets: [['@babel/preset-env', { modules: false }], '@babel/preset-react'],
-        extensions: EXTENSIONS,
-        exclude: 'node_modules/**',
-      }),
-      commonjs({
-        include: /node_modules/,
-      }),
-      // replace({ 'process.env.NODE_ENV': JSON.stringify(env) }),
-      resolve({
-        extensions: EXTENSIONS,
-        preferBuiltins: false,
-      }),
-    ];
+const folderBuilds = getFolders('./src').map((folder) => {
+  return {
+    input: `src/${folder}/index.ts`,
+    output: {
+      file: `dist/${folder}/index.js`,
+      sourcemap: true,
+      exports: 'named',
+      format: 'esm',
+    },
+    plugins: subfolderPlugins(folder),
+    external: ['react', 'react-dom'],
+  };
+});
 
 export default [
   {
-    onwarn: discardWarning,
-    input: "src/index.ts",
-    output: {
-      esModule: false,
-      file: packageJson.unpkg,
-      format: 'umd',
-      name: '@dimasokta14/cube-test-statemanagement',
-      exports: 'named',
-      globals: {
-        react: 'React',
-        'react-dom': 'ReactDOM',
-      },
-    },
-    plugins: [
-      ...commonPlugins(),
-      typescript({ tsconfig: "./tsconfig.json" }),
-      dts(),
-      // terser()
-    ],
-  },
-  {
-    onwarn: discardWarning,
-    input: getChunks('src'),
+    input: ['src/index.ts'],
     output: [
-      { dir: 'dist/esm', format: 'esm', sourcemap: true },
-      { dir: 'dist/cjs', format: 'cjs', exports: 'named', sourcemap: true },
+      {
+        file: packageJson.module,
+        format: 'esm',
+        sourcemap: true,
+        exports: 'named',
+      },
     ],
-    plugins: [...commonPlugins(), dts()],
-    // external: ["react", "react-dom"]
+    plugins,
+    external: ['react', 'react-dom'],
+  },
+  ...folderBuilds,
+  {
+    input: ['src/index.ts'],
+    output: [
+      {
+        file: packageJson.main,
+        format: 'cjs',
+        sourcemap: true,
+        exports: 'named',
+      },
+    ],
+    plugins,
+    external: ['react', 'react-dom'],
   },
 ];
