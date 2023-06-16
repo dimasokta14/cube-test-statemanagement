@@ -5,8 +5,9 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/cube-test-statemanagement"
   },
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "rollup": "rollup -c",
     "test": "jest"
@@ -47,6 +48,7 @@
     "react-dom": "^18.2.0",
     "rollup": "^2.60.0",
     "rollup-plugin-dts": "^4.0.1",
+    "rollup-plugin-esbuild": "^5.0.0",
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "rollup-plugin-typescript2": "^0.34.1",
     "tslib": "^2.5.3",
