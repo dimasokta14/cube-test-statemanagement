@@ -1,6 +1,6 @@
 {
   "name": "@dimasokta14/cube-test-statemanagement",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Cube state management for testing microfrontend infrastructure",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/cube-test-statemanagement"
